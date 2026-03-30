@@ -1,0 +1,11 @@
+Detalles
+Suscripción
+98cdb964-80fe-41f8-af0d-44044bed87b5
+Grupo de recursos
+function_CN_II
+Nombre
+duocfunction
+Nombre de host predeterminado único seguro
+Habilitado
+Pila del entorno en tiempo de ejecución
+Java 17.0

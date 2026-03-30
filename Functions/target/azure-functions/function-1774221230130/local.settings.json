@@ -1,0 +1,10 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "java",
+    "ORACLE_URL": "jdbc:oracle:thin:@dov4t206bg302eie_high?TNS_ADMIN=C:/Users/Basti/Downloads/wallet",
+    "ORACLE_USERNAME": "ADMIN",
+    "ORACLE_PASSWORD": "CloudNative1"
+  }
+}
