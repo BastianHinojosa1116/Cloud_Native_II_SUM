@@ -81,4 +81,47 @@ public class BibliotecaService {
             return "Error BFF crearPrestamo: " + e.getMessage();
         }
     }
+
+    // LIBRO
+    public String ejecutarGraphQL(String graphqlBody) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<String> request = new HttpEntity<>(graphqlBody, headers);
+
+            ResponseEntity<String> response = restTemplate.postForEntity(
+                    functionsBaseUrl + "/graphql",
+                    request,
+                    String.class);
+
+            return response.getBody();
+        } catch (HttpStatusCodeException e) {
+            return "Error Azure Function graphql: " + e.getResponseBodyAsString();
+        } catch (Exception e) {
+            return "Error BFF graphql: " + e.getMessage();
+        }
+    }
+
+    // USUARIOS
+    public String ejecutarGraphQLUsuarios(String graphqlBody) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<String> request = new HttpEntity<>(graphqlBody, headers);
+
+            ResponseEntity<String> response = restTemplate.postForEntity(
+                    functionsBaseUrl + "/graphqlUsuarios",
+                    request,
+                    String.class);
+
+            return response.getBody();
+        } catch (HttpStatusCodeException e) {
+            return "Error Azure Function graphqlUsuarios: " + e.getResponseBodyAsString();
+        } catch (Exception e) {
+            return "Error BFF graphqlUsuarios: " + e.getMessage();
+        }
+    }
+
 }

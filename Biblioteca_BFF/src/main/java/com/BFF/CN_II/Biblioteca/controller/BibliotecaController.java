@@ -35,4 +35,14 @@ public class BibliotecaController {
     public ResponseEntity<String> crearPrestamo(@RequestBody Prestamo prestamo) {
         return ResponseEntity.ok(bibliotecaService.crearPrestamo(prestamo));
     }
+
+    @PostMapping("/graphql")
+    public ResponseEntity<String> graphql(@RequestBody String body) {
+        return ResponseEntity.ok(bibliotecaService.ejecutarGraphQL(body));
+    }
+
+    @PostMapping("/graphql/usuarios")
+    public ResponseEntity<String> graphqlUsuarios(@RequestBody String body) {
+        return ResponseEntity.ok(bibliotecaService.ejecutarGraphQLUsuarios(body));
+    }
 }

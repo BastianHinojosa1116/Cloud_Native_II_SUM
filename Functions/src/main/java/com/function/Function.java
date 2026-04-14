@@ -4,9 +4,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microsoft.azure.functions.*;
 import com.microsoft.azure.functions.annotation.*;
 
+import graphql.ExecutionResult;
+import graphql.GraphQL;
+import graphql.schema.DataFetcher;
+import graphql.schema.GraphQLSchema;
+import graphql.schema.idl.RuntimeWiring;
+import graphql.schema.idl.SchemaGenerator;
+import graphql.schema.idl.SchemaParser;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class Function {
@@ -283,5 +295,315 @@ public class Function {
                         return "";
                 }
                 return value.replace("\"", "\\\"");
+        }
+
+        @FunctionName("graphql")
+        public HttpResponseMessage graphql(
+                        @HttpTrigger(name = "req", methods = {
+                                        HttpMethod.POST }, authLevel = AuthorizationLevel.ANONYMOUS) HttpRequestMessage<Optional<String>> request,
+                        final ExecutionContext context) {
+
+                try {
+                        String body = request.getBody().orElse("");
+                        String query = mapper.readTree(body).path("query").asText();
+
+                        String schema = """
+                                        type Query {
+                                            libros: [Libro]
+                                        }
+
+                                        type Mutation {
+                                            crearLibro(idLibro: Int, codigoLibro: String, titulo: String, autor: String, disponible: Int): Resultado
+                                            actualizarLibro(idLibro: Int, codigoLibro: String, titulo: String, autor: String, disponible: Int): Resultado
+                                            eliminarLibro(idLibro: Int): Resultado
+                                        }
+
+                                        type Libro {
+                                            idLibro: Int
+                                            codigoLibro: String
+                                            titulo: String
+                                            autor: String
+                                            disponible: Int
+                                        }
+
+                                        type Resultado {
+                                            mensaje: String
+                                        }
+                                        """;
+
+                        DataFetcher<?> librosFetcher = env -> {
+                                String sql = "SELECT ID_LIBRO, CODIGO_LIBRO, TITULO, AUTOR, DISPONIBLE FROM LIBRO ORDER BY ID_LIBRO";
+                                List<Map<String, Object>> lista = new ArrayList<>();
+
+                                try (Connection conn = OracleConnection.getConnection();
+                                                PreparedStatement stmt = conn.prepareStatement(sql);
+                                                ResultSet rs = stmt.executeQuery()) {
+
+                                        while (rs.next()) {
+                                                Map<String, Object> libro = new HashMap<>();
+                                                libro.put("idLibro", rs.getInt("ID_LIBRO"));
+                                                libro.put("codigoLibro", rs.getString("CODIGO_LIBRO"));
+                                                libro.put("titulo", rs.getString("TITULO"));
+                                                libro.put("autor", rs.getString("AUTOR"));
+                                                libro.put("disponible", rs.getInt("DISPONIBLE"));
+                                                lista.add(libro);
+                                        }
+                                }
+
+                                return lista;
+                        };
+
+                        DataFetcher<?> crearLibroFetcher = env -> {
+                                Integer idLibro = env.getArgument("idLibro");
+                                String codigoLibro = env.getArgument("codigoLibro");
+                                String titulo = env.getArgument("titulo");
+                                String autor = env.getArgument("autor");
+                                Integer disponible = env.getArgument("disponible");
+
+                                if (idLibro == null || codigoLibro == null || titulo == null || autor == null
+                                                || disponible == null) {
+                                        throw new RuntimeException(
+                                                        "Todos los campos son obligatorios para crear el libro");
+                                }
+
+                                String sql = "INSERT INTO LIBRO (ID_LIBRO, CODIGO_LIBRO, TITULO, AUTOR, DISPONIBLE) VALUES (?, ?, ?, ?, ?)";
+
+                                try (Connection conn = OracleConnection.getConnection();
+                                                PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+                                        stmt.setInt(1, idLibro);
+                                        stmt.setString(2, codigoLibro);
+                                        stmt.setString(3, titulo);
+                                        stmt.setString(4, autor);
+                                        stmt.setInt(5, disponible);
+
+                                        stmt.executeUpdate();
+                                }
+
+                                return Map.of("mensaje", "Libro creado correctamente");
+                        };
+
+                        DataFetcher<?> actualizarLibroFetcher = env -> {
+                                Integer idLibro = env.getArgument("idLibro");
+                                String codigoLibro = env.getArgument("codigoLibro");
+                                String titulo = env.getArgument("titulo");
+                                String autor = env.getArgument("autor");
+                                Integer disponible = env.getArgument("disponible");
+
+                                if (idLibro == null || codigoLibro == null || titulo == null || autor == null
+                                                || disponible == null) {
+                                        throw new RuntimeException(
+                                                        "Todos los campos son obligatorios para actualizar el libro");
+                                }
+
+                                String sql = "UPDATE LIBRO SET CODIGO_LIBRO = ?, TITULO = ?, AUTOR = ?, DISPONIBLE = ? WHERE ID_LIBRO = ?";
+
+                                try (Connection conn = OracleConnection.getConnection();
+                                                PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+                                        stmt.setString(1, codigoLibro);
+                                        stmt.setString(2, titulo);
+                                        stmt.setString(3, autor);
+                                        stmt.setInt(4, disponible);
+                                        stmt.setInt(5, idLibro);
+
+                                        int filas = stmt.executeUpdate();
+
+                                        if (filas == 0) {
+                                                return Map.of("mensaje", "No se encontró el libro para actualizar");
+                                        }
+                                }
+
+                                return Map.of("mensaje", "Libro actualizado correctamente");
+                        };
+
+                        DataFetcher<?> eliminarLibroFetcher = env -> {
+                                Integer idLibro = env.getArgument("idLibro");
+
+                                if (idLibro == null) {
+                                        throw new RuntimeException("El idLibro es obligatorio para eliminar");
+                                }
+
+                                String sql = "DELETE FROM LIBRO WHERE ID_LIBRO = ?";
+
+                                try (Connection conn = OracleConnection.getConnection();
+                                                PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+                                        stmt.setInt(1, idLibro);
+
+                                        int filas = stmt.executeUpdate();
+
+                                        if (filas == 0) {
+                                                return Map.of("mensaje", "No se encontró el libro para eliminar");
+                                        }
+                                }
+
+                                return Map.of("mensaje", "Libro eliminado correctamente");
+                        };
+
+                        RuntimeWiring wiring = RuntimeWiring.newRuntimeWiring()
+                                        .type("Query", builder -> builder.dataFetcher("libros", librosFetcher))
+                                        .type("Mutation", builder -> builder
+                                                        .dataFetcher("crearLibro", crearLibroFetcher)
+                                                        .dataFetcher("actualizarLibro", actualizarLibroFetcher)
+                                                        .dataFetcher("eliminarLibro", eliminarLibroFetcher))
+                                        .build();
+
+                        GraphQLSchema graphQLSchema = new SchemaGenerator()
+                                        .makeExecutableSchema(new SchemaParser().parse(schema), wiring);
+
+                        GraphQL graphQL = GraphQL.newGraphQL(graphQLSchema).build();
+
+                        ExecutionResult result = graphQL.execute(query);
+
+                        return request.createResponseBuilder(HttpStatus.OK)
+                                        .header("Content-Type", "application/json")
+                                        .body(mapper.writeValueAsString(result.toSpecification()))
+                                        .build();
+
+                } catch (Exception e) {
+                        context.getLogger().severe("Error GraphQL: " + e.getMessage());
+                        return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR)
+                                        .header("Content-Type", "application/json")
+                                        .body("{\"errors\":[{\"message\":\"Error GraphQL\"}]}")
+                                        .build();
+                }
+        }
+
+        @FunctionName("graphqlUsuarios")
+        public HttpResponseMessage graphqlUsuarios(
+                        @HttpTrigger(name = "req", methods = {
+                                        HttpMethod.POST }, authLevel = AuthorizationLevel.ANONYMOUS) HttpRequestMessage<Optional<String>> request,
+                        final ExecutionContext context) {
+
+                try {
+                        String body = request.getBody().orElse("");
+                        String query = mapper.readTree(body).path("query").asText();
+
+                        String schema = """
+                                        type Query {
+                                            usuarios: [Usuario]
+                                        }
+
+                                        type Mutation {
+                                            crearUsuarioGraphQL(idUsuario: Int, rut: String, nombres: String, apellidoPaterno: String, apellidoMaterno: String): Resultado
+                                            eliminarUsuarioGraphQL(idUsuario: Int): Resultado
+                                        }
+
+                                        type Usuario {
+                                            idUsuario: Int
+                                            rut: String
+                                            nombres: String
+                                            apellidoPaterno: String
+                                            apellidoMaterno: String
+                                        }
+
+                                        type Resultado {
+                                            mensaje: String
+                                        }
+                                        """;
+
+                        DataFetcher<?> usuariosFetcher = env -> {
+                                String sql = "SELECT ID_USUARIO, RUT, NOMBRES, APELLIDO_PATERNO, APELLIDO_MATERNO FROM USUARIO ORDER BY ID_USUARIO";
+                                List<Map<String, Object>> lista = new ArrayList<>();
+
+                                try (Connection conn = OracleConnection.getConnection();
+                                                PreparedStatement stmt = conn.prepareStatement(sql);
+                                                ResultSet rs = stmt.executeQuery()) {
+
+                                        while (rs.next()) {
+                                                Map<String, Object> usuario = new HashMap<>();
+                                                usuario.put("idUsuario", rs.getInt("ID_USUARIO"));
+                                                usuario.put("rut", rs.getString("RUT"));
+                                                usuario.put("nombres", rs.getString("NOMBRES"));
+                                                usuario.put("apellidoPaterno", rs.getString("APELLIDO_PATERNO"));
+                                                usuario.put("apellidoMaterno", rs.getString("APELLIDO_MATERNO"));
+                                                lista.add(usuario);
+                                        }
+                                }
+
+                                return lista;
+                        };
+
+                        DataFetcher<?> crearUsuarioGraphQLFetcher = env -> {
+                                Integer idUsuario = env.getArgument("idUsuario");
+                                String rut = env.getArgument("rut");
+                                String nombres = env.getArgument("nombres");
+                                String apellidoPaterno = env.getArgument("apellidoPaterno");
+                                String apellidoMaterno = env.getArgument("apellidoMaterno");
+
+                                if (idUsuario == null || rut == null || rut.isBlank() ||
+                                                nombres == null || nombres.isBlank() ||
+                                                apellidoPaterno == null || apellidoPaterno.isBlank()) {
+                                        throw new RuntimeException("Faltan datos obligatorios para crear el usuario");
+                                }
+
+                                String sql = "INSERT INTO USUARIO (ID_USUARIO, RUT, NOMBRES, APELLIDO_PATERNO, APELLIDO_MATERNO) VALUES (?, ?, ?, ?, ?)";
+
+                                try (Connection conn = OracleConnection.getConnection();
+                                                PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+                                        stmt.setInt(1, idUsuario);
+                                        stmt.setString(2, rut);
+                                        stmt.setString(3, nombres);
+                                        stmt.setString(4, apellidoPaterno);
+                                        stmt.setString(5, apellidoMaterno);
+
+                                        stmt.executeUpdate();
+                                }
+
+                                return Map.of("mensaje", "Usuario creado correctamente");
+                        };
+
+                        DataFetcher<?> eliminarUsuarioGraphQLFetcher = env -> {
+                                Integer idUsuario = env.getArgument("idUsuario");
+
+                                if (idUsuario == null) {
+                                        throw new RuntimeException("El idUsuario es obligatorio para eliminar");
+                                }
+
+                                String sql = "DELETE FROM USUARIO WHERE ID_USUARIO = ?";
+
+                                try (Connection conn = OracleConnection.getConnection();
+                                                PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+                                        stmt.setInt(1, idUsuario);
+                                        int filas = stmt.executeUpdate();
+
+                                        if (filas == 0) {
+                                                return Map.of("mensaje", "No se encontró el usuario para eliminar");
+                                        }
+                                }
+
+                                return Map.of("mensaje", "Usuario eliminado correctamente");
+                        };
+
+                        RuntimeWiring wiring = RuntimeWiring.newRuntimeWiring()
+                                        .type("Query", builder -> builder.dataFetcher("usuarios", usuariosFetcher))
+                                        .type("Mutation", builder -> builder
+                                                        .dataFetcher("crearUsuarioGraphQL", crearUsuarioGraphQLFetcher)
+                                                        .dataFetcher("eliminarUsuarioGraphQL",
+                                                                        eliminarUsuarioGraphQLFetcher))
+                                        .build();
+
+                        GraphQLSchema graphQLSchema = new SchemaGenerator()
+                                        .makeExecutableSchema(new SchemaParser().parse(schema), wiring);
+
+                        GraphQL graphQL = GraphQL.newGraphQL(graphQLSchema).build();
+
+                        ExecutionResult result = graphQL.execute(query);
+
+                        return request.createResponseBuilder(HttpStatus.OK)
+                                        .header("Content-Type", "application/json")
+                                        .body(mapper.writeValueAsString(result.toSpecification()))
+                                        .build();
+
+                } catch (Exception e) {
+                        context.getLogger().severe("Error GraphQL Usuarios: " + e.getMessage());
+                        return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR)
+                                        .header("Content-Type", "application/json")
+                                        .body("{\"errors\":[{\"message\":\"Error GraphQL Usuarios\"}]}")
+                                        .build();
+                }
         }
 }
