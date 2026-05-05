@@ -1,127 +1,61 @@
 package com.BFF.CN_II.Biblioteca.service;
 
-import com.BFF.CN_II.Biblioteca.model.Prestamo;
-import com.BFF.CN_II.Biblioteca.model.Usuario;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.azure.core.credential.AzureKeyCredential;
+import com.azure.core.util.BinaryData;
+import com.azure.messaging.eventgrid.EventGridEvent;
+import com.azure.messaging.eventgrid.EventGridPublisherClient;
+import com.azure.messaging.eventgrid.EventGridPublisherClientBuilder;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpStatusCodeException;
-import org.springframework.web.client.RestTemplate;
 
 @Service
 public class BibliotecaService {
 
-    @Value("${functions.base.url}")
-    private String functionsBaseUrl;
+    @Value("${azure.eventgrid.endpoint}")
+    private String endpoint;
 
-    private final RestTemplate restTemplate = new RestTemplate();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    @Value("${azure.eventgrid.key}")
+    private String key;
 
-    public String listarUsuarios() {
+    private EventGridPublisherClient<EventGridEvent> eventGridClient;
+
+    @PostConstruct
+    public void init() {
+        this.eventGridClient = new EventGridPublisherClientBuilder()
+            .endpoint(endpoint)
+            .credential(new AzureKeyCredential(key))
+            .buildEventGridEventPublisherClient();
+    }
+
+    
+    public String enviarEvento(String tipoEvento, Object data) {
         try {
-            return restTemplate.getForObject(functionsBaseUrl + "/listarUsuarios", String.class);
-        } catch (HttpStatusCodeException e) {
-            return "Error Azure Function listarUsuarios: " + e.getResponseBodyAsString();
+            EventGridEvent evento = new EventGridEvent(
+                "biblioteca/operacion", 
+                tipoEvento,     //Body del evento específico (ej, "Usuario.Creado")     
+                BinaryData.fromObject(data),
+                "1.0"
+            );
+            eventGridClient.sendEvent(evento);
+            return "Evento " + tipoEvento + " publicado exitosamente.";
         } catch (Exception e) {
-            return "Error BFF listarUsuarios: " + e.getMessage();
+            return "Error al publicar: " + e.getMessage();
         }
     }
 
-    public String crearUsuario(Usuario usuario) {
+    public String enviarEventoSimple(String tipoEvento, int id) {
         try {
-            String jsonBody = objectMapper.writeValueAsString(usuario);
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            HttpEntity<String> request = new HttpEntity<>(jsonBody, headers);
-
-            ResponseEntity<String> response = restTemplate.postForEntity(
-                    functionsBaseUrl + "/crearUsuario",
-                    request,
-                    String.class);
-
-            return response.getBody();
-        } catch (HttpStatusCodeException e) {
-            return "Error Azure Function crearUsuario: " + e.getResponseBodyAsString();
+            EventGridEvent evento = new EventGridEvent(
+                "biblioteca/eliminacion",
+                tipoEvento,           //Eliminaciones
+                BinaryData.fromObject(id),
+                "1.0"
+            );
+            eventGridClient.sendEvent(evento);
+            return "Solicitud de eliminación " + tipoEvento + " enviada.";
         } catch (Exception e) {
-            return "Error BFF crearUsuario: " + e.getMessage();
+            return "Error en eliminación: " + e.getMessage();
         }
     }
-
-    public String listarPrestamos() {
-        try {
-            return restTemplate.getForObject(functionsBaseUrl + "/listarPrestamos", String.class);
-        } catch (HttpStatusCodeException e) {
-            return "Error Azure Function listarPrestamos: " + e.getResponseBodyAsString();
-        } catch (Exception e) {
-            return "Error BFF listarPrestamos: " + e.getMessage();
-        }
-    }
-
-    public String crearPrestamo(Prestamo prestamo) {
-        try {
-            String jsonBody = objectMapper.writeValueAsString(prestamo);
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            HttpEntity<String> request = new HttpEntity<>(jsonBody, headers);
-
-            ResponseEntity<String> response = restTemplate.postForEntity(
-                    functionsBaseUrl + "/crearPrestamo",
-                    request,
-                    String.class);
-
-            return response.getBody();
-        } catch (HttpStatusCodeException e) {
-            return "Error Azure Function crearPrestamo: " + e.getResponseBodyAsString();
-        } catch (Exception e) {
-            return "Error BFF crearPrestamo: " + e.getMessage();
-        }
-    }
-
-    // LIBRO
-    public String ejecutarGraphQL(String graphqlBody) {
-        try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            HttpEntity<String> request = new HttpEntity<>(graphqlBody, headers);
-
-            ResponseEntity<String> response = restTemplate.postForEntity(
-                    functionsBaseUrl + "/graphql",
-                    request,
-                    String.class);
-
-            return response.getBody();
-        } catch (HttpStatusCodeException e) {
-            return "Error Azure Function graphql: " + e.getResponseBodyAsString();
-        } catch (Exception e) {
-            return "Error BFF graphql: " + e.getMessage();
-        }
-    }
-
-    // USUARIOS
-    public String ejecutarGraphQLUsuarios(String graphqlBody) {
-        try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            HttpEntity<String> request = new HttpEntity<>(graphqlBody, headers);
-
-            ResponseEntity<String> response = restTemplate.postForEntity(
-                    functionsBaseUrl + "/graphqlUsuarios",
-                    request,
-                    String.class);
-
-            return response.getBody();
-        } catch (HttpStatusCodeException e) {
-            return "Error Azure Function graphqlUsuarios: " + e.getResponseBodyAsString();
-        } catch (Exception e) {
-            return "Error BFF graphqlUsuarios: " + e.getMessage();
-        }
-    }
-
 }

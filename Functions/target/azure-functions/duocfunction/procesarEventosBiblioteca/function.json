@@ -1,0 +1,9 @@
+{
+  "scriptFile" : "../function-1.0-SNAPSHOT.jar",
+  "entryPoint" : "com.function.Function.procesarEventos",
+  "bindings" : [ {
+    "type" : "eventGridTrigger",
+    "direction" : "in",
+    "name" : "event"
+  } ]
+}

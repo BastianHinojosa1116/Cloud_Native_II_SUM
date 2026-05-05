@@ -16,57 +16,60 @@
         <java.version>17</java.version>
         <azure.functions.maven.plugin.version>1.40.0</azure.functions.maven.plugin.version>
         <azure.functions.java.library.version>3.2.2</azure.functions.java.library.version>
-        <functionAppName>function-1774221230130</functionAppName>
     </properties>
 
     <dependencies>
+        <!-- Azure Functions Library -->
         <dependency>
             <groupId>com.microsoft.azure.functions</groupId>
             <artifactId>azure-functions-java-library</artifactId>
             <version>${azure.functions.java.library.version}</version>
         </dependency>
 
+        <!-- Jackson para procesar JSON -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <version>2.17.2</version>
         </dependency>
 
+        <!-- Oracle Database Connectors -->
         <dependency>
             <groupId>com.oracle.database.jdbc</groupId>
             <artifactId>ojdbc11</artifactId>
             <version>23.2.0.0</version>
         </dependency>
-
         <dependency>
             <groupId>com.oracle.database.security</groupId>
             <artifactId>oraclepki</artifactId>
             <version>23.2.0.0</version>
         </dependency>
 
+        <!-- Event Grid Messaging -->
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-messaging-eventgrid</artifactId>
+            <version>4.12.0</version>
+        </dependency>
+
+        <!-- Testing -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>5.4.2</version>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
             <version>2.23.4</version>
             <scope>test</scope>
         </dependency>
-
-        <dependency>
-    <groupId>com.graphql-java</groupId>
-    <artifactId>graphql-java</artifactId>
-    <version>21.0</version>
-</dependency>
     </dependencies>
 
     <build>
         <plugins>
+            <!-- 1. Compilador de Java (Configuración estándar) -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -78,15 +81,15 @@
                 </configuration>
             </plugin>
 
+            <!-- 2. Azure Functions Plugin (Aquí van tus datos del portal) -->
             <plugin>
                 <groupId>com.microsoft.azure</groupId>
                 <artifactId>azure-functions-maven-plugin</artifactId>
                 <version>${azure.functions.maven.plugin.version}</version>
                 <configuration>
-                    <appName>${functionAppName}</appName>
-                    <resourceGroup>java-functions-group</resourceGroup>
-                    <region>westus</region>
-                    <appServicePlanName>java-functions-app-service-plan</appServicePlanName>
+                    <appName>duocfunction</appName> 
+                    <resourceGroup>function_CN_II</resourceGroup> 
+                    <region>eastus</region>
                     <runtime>
                         <javaVersion>17</javaVersion>
                     </runtime>
@@ -110,13 +113,6 @@
             <plugin>
                 <artifactId>maven-clean-plugin</artifactId>
                 <version>3.1.0</version>
-                <configuration>
-                    <filesets>
-                        <fileset>
-                            <directory>obj</directory>
-                        </fileset>
-                    </filesets>
-                </configuration>
             </plugin>
         </plugins>
     </build>

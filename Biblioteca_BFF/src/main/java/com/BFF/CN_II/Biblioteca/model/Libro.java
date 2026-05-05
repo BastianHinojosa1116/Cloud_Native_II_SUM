@@ -3,16 +3,18 @@ package com.BFF.CN_II.Biblioteca.model;
 public class Libro {
 
     private Integer idLibro;
-    private String nombre;
-    private String codigoLibro; //
+    private String titulo;      // Coincide con la columna de Oracle y la Function
+    private String autor;       // Coincide con la columna de Oracle y la Function
+    private String codigoLibro; 
     private Integer disponible; // 1 = disponible, 0 = no disponible
 
     public Libro() {
     }
 
-    public Libro(Integer idLibro, String nombre, String codigoLibro, Integer disponible) {
+    public Libro(Integer idLibro, String titulo, String autor, String codigoLibro, Integer disponible) {
         this.idLibro = idLibro;
-        this.nombre = nombre;
+        this.titulo = titulo;
+        this.autor = autor;
         this.codigoLibro = codigoLibro;
         this.disponible = disponible;
     }
@@ -25,12 +27,20 @@ public class Libro {
         this.idLibro = idLibro;
     }
 
-    public String getNombre() {
-        return nombre;
+    public String getTitulo() {
+        return titulo;
     }
 
-    public void setNombre(String nombre) {
-        this.nombre = nombre;
+    public void setTitulo(String titulo) {
+        this.titulo = titulo;
+    }
+
+    public String getAutor() {
+        return autor;
+    }
+
+    public void setAutor(String autor) {
+        this.autor = autor;
     }
 
     public String getCodigoLibro() {
